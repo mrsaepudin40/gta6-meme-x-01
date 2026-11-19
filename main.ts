@@ -30,6 +30,19 @@ if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
 if (typeof parsed.url !== 'string' || parsed.url.length === 0) {
   throw new Error('POST.json must name a url string');
 }
+// The gate only accepts an X post address with a digits-only status id:
+// https://x.com/<handle>/status/<id> (or twitter.com, www./mobile. prefixes,
+// /i/web/status/<id>). Reject a placeholder or any other address here, so a
+// bad POST.json fails loudly instead of reaching the gate as valid 0.
+const postUrl = new URL(parsed.url);
+const postHost = postUrl.hostname.replace(/^(www\.|mobile\.)/, '');
+if (
+  (postHost !== 'x.com' && postHost !== 'twitter.com') ||
+  !/^\/[^/]+\/status\/\d+$/.test(postUrl.pathname) &&
+  !/^\/i\/web\/status\/\d+$/.test(postUrl.pathname)
+) {
+  throw new Error(`POST.json url is not an X post address: ${parsed.url}`);
+}
 
 mkdirSync(outputDir, { recursive: true });
 copyFileSync(source, join(outputDir, 'POST.json'));
